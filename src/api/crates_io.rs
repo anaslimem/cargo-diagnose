@@ -6,11 +6,10 @@ pub struct CratesIoResponse {
     pub crate_data: CrateData,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Deserialize)]
 pub struct CrateData {
     pub max_version: String,
     pub repository: Option<String>,
-    pub description: Option<String>,
 }
 
 pub async fn get_crate_info(

@@ -60,14 +60,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 let mut report = report::CrateReport::new(dep.name.clone(), None);
 
                 // 1. Query OSV for vulnerabilities
-                if let Ok(osv_res) = api::osv::check_vulnerabilities(&client, &dep.name, &dep.version).await
-                    && let Some(vulns) = osv_res.vulns {
-                        for v in vulns {
-                            let _summary = v.summary.unwrap_or_else(|| "Unknown".to_string());
-                            // Penalty: 100 points, Severity: 100 (Highest)
-                            report.add_issue(format!("Security - {}", v.id), "Security Risk", 100, 100);
-                        }
+                if let Ok(osv_res) =
+                    api::osv::check_vulnerabilities(&client, &dep.name, &dep.version).await
+                    && let Some(vulns) = osv_res.vulns
+                {
+                    for v in vulns {
+                        // Penalty: 100 points, Severity: 100 (Highest)
+                        report.add_issue(format!("Security - {}", v.id), "Security Risk", 100, 100);
                     }
+                }
 
                 // 2. Query Crates.io for latest version / metadata
                 if let Ok(crates_res) = api::crates_io::get_crate_info(&client, &dep.name).await {
@@ -78,7 +79,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                                 dep.version, crates_res.crate_data.max_version
                             ),
                             "Version Risk",
-                            0, // Penalty: 0 (we don't deduct points for being outdated)
+                            0,  // Penalty: 0 (we don't deduct points for being outdated)
                             10, // Severity: 10 (Lowest)
                         );
                     }
@@ -98,7 +99,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                                     "Repository is Archived".to_string(),
                                     "Maintenance Risk",
                                     100, // Penalty: 100 (Immediate fail)
-                                    50, // Severity: 50
+                                    50,  // Severity: 50
                                 );
                             } else if stats.stars == 0 && stats.open_issues > 100 {
                                 // Soft heuristic warning
@@ -140,11 +141,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 for report in &reports {
                     println!("---------------------------------------------------");
                     println!("{:<13}: {}", "Crate Name", report.name);
-                    println!(
-                        "{:<13}: {}",
-                        "Score",
-                        report.score
-                    );
+                    println!("{:<13}: {}", "Score", report.score);
                     println!(
                         "{:<13}: {}",
                         "Repo",
@@ -178,15 +175,16 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             }
 
             if let Some(threshold) = fail_under
-                && (overall_health as u8) < threshold {
-                    if !json {
-                        eprintln!(
-                            "\nHealth score {:.0}% is below threshold of {}%.",
-                            overall_health, threshold
-                        );
-                    }
-                    std::process::exit(1);
+                && (overall_health as u8) < threshold
+            {
+                if !json {
+                    eprintln!(
+                        "\nHealth score {:.0}% is below threshold of {}%.",
+                        overall_health, threshold
+                    );
                 }
+                std::process::exit(1);
+            }
         }
     }
 

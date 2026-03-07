@@ -18,12 +18,9 @@ pub struct OsvResponse {
     pub vulns: Option<Vec<OsvVulnerability>>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Deserialize)]
 pub struct OsvVulnerability {
     pub id: String,
-    pub aliases: Option<Vec<String>>,
-    pub summary: Option<String>,
-    pub details: Option<String>,
 }
 
 pub async fn check_vulnerabilities(

@@ -33,7 +33,7 @@ impl CrateReport {
     }
 
     pub fn is_healthy(&self) -> bool {
-        // We now consider a crate unhealthy if it lost any points 
+        // We now consider a crate unhealthy if it lost any points
         // (meaning a version bump alone keeps it 100% healthy)
         self.score == 100
     }

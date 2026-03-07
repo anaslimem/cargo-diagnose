@@ -1,10 +1,9 @@
 use cargo_metadata::MetadataCommand;
 
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct DependencyInfo {
     pub name: String,
     pub version: String,
-    pub repository: Option<String>,
 }
 
 pub fn get_project_dependencies() -> Result<Vec<DependencyInfo>, Box<dyn std::error::Error>> {
@@ -31,7 +30,6 @@ pub fn get_project_dependencies() -> Result<Vec<DependencyInfo>, Box<dyn std::er
             dependencies.push(DependencyInfo {
                 name: package.name.to_string(),
                 version: package.version.to_string(),
-                repository: package.repository.clone(),
             });
         }
     }
