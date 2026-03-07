@@ -76,7 +76,12 @@ mod tests {
     #[test]
     fn test_add_issue_deducts_score() {
         let mut report = CrateReport::new("test-crate".to_string(), None);
-        report.add_issue("vulnerability".to_string(), RiskType::SecurityRisk, 100, 100);
+        report.add_issue(
+            "vulnerability".to_string(),
+            RiskType::SecurityRisk,
+            100,
+            100,
+        );
         assert_eq!(report.score, 0);
         assert!(!report.is_healthy());
         assert_eq!(report.risk_type, RiskType::SecurityRisk);
@@ -93,7 +98,7 @@ mod tests {
     #[test]
     fn test_highest_severity_wins() {
         let mut report = CrateReport::new("test-crate".to_string(), None);
-        
+
         // Low severity version risk
         report.add_issue("old version".to_string(), RiskType::VersionRisk, 0, 10);
         assert_eq!(report.risk_type, RiskType::VersionRisk);
