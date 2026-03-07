@@ -1,6 +1,6 @@
 # Cargo Diagnose
 
-`cargo-diagnose` is a tool that checks the health of your Rust project's dependencies. It looks at your `Cargo.toml` file and checks your dependencies using:
+`cargo-diagnose` is a high-performance Rust tool that checks the health of your project's dependencies. It analyzes your dependency tree **concurrently** using:
 - **OSV.dev** (for known security problems)
 - **Crates.io** (for deprecated and old versions)
 - **GitHub API** (to see if the repository is maintained or archived)
@@ -18,30 +18,22 @@ cargo install cargo-diagnose
 Go to any Rust project directory (where your `Cargo.toml` is) and run:
 
 ```bash
-cargo-diagnose analyze
+cargo diagnose
 ```
 
-This will print a report showing a score out of 100% for your dependencies:
+This will automatically scan your project and print a health report.
 
-```text
-Dependency Health Check Report
-==============================
+### Performance
 
-Overall Health: 90%
-Good Crates: 7/8
-Problematic Crates: 1
+Analysis is fully **concurrent**. Even if your project has hundreds of dependencies, `cargo-diagnose` retrieves data from OSV, Crates.io, and GitHub in parallel using `tokio`, making it significantly faster than sequential scanners.
 
-Details:
----------------------------------------------------
-Crate Name   : rustls
-Score        : 20
-Repo         : github.com/rustls/rustls
-Issue        : High open issues vs stars
-Risk Type    : Maintenance Risk
-...
----------------------------------------------------
-Missing / Vulnerable Crates: 10%
-Good / Healthy Crates: 90%
+### Authentication (GitHub Token)
+
+To avoid GitHub API rate limits on large projects, you can provide a GitHub personal access token via the `GITHUB_TOKEN` environment variable:
+
+```bash
+export GITHUB_TOKEN=your_token_here
+cargo diagnose
 ```
 
 ### JSON Output
@@ -49,7 +41,7 @@ Good / Healthy Crates: 90%
 If you want to use this in scripts or other tools, you can get the output as JSON:
 
 ```bash
-cargo-diagnose analyze --json
+cargo diagnose --json
 ```
 
 ### Fail Test (CI)
@@ -57,7 +49,7 @@ cargo-diagnose analyze --json
 You can make `cargo-diagnose` fail the command if the score is too low. This is useful for stopping pull requests that add unsafe or unmaintained crates:
 
 ```bash
-cargo-diagnose analyze --fail-under 90
+cargo diagnose --fail-under 90
 ```
 If the overall score is less than `90%`, the command will fail.
 
@@ -103,6 +95,3 @@ If your project has 10 dependencies:
 - **Calculation:** `(900 + 0) / 10 crates = 90% Overall Health`
 
 If a newer version of a crate is available, it will be highlighted for your convenience, but **no points are deducted** so you don't receive unnecessary penalties for fast-moving ecosystems.
-## License
-
-MIT

@@ -3,6 +3,7 @@ use serde::Deserialize;
 
 #[derive(Deserialize)]
 pub struct CratesIoResponse {
+    #[serde(rename = "crate")]
     pub crate_data: CrateData,
 }
 
@@ -28,20 +29,8 @@ pub async fn get_crate_info(
         .await?;
 
     if response.status().is_success() {
-        // Crates.io API nests the core data under {"crate": {...}}
-        // Because `crate` is a reserved keyword in Rust, the json response must map it.
-        // We'll parse the raw string then map it manually or use a wrapper.
-
-        #[derive(Deserialize)]
-        struct RawResponse {
-            #[serde(rename = "crate")]
-            inner: CrateData,
-        }
-
-        let raw: RawResponse = response.json().await?;
-        Ok(CratesIoResponse {
-            crate_data: raw.inner,
-        })
+        let res: CratesIoResponse = response.json().await?;
+        Ok(res)
     } else {
         Err(format!("Crates.io API error: {}", response.status()).into())
     }

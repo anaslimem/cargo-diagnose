@@ -1,4 +1,5 @@
 use octocrab::Octocrab;
+use url::Url;
 
 #[derive(Debug)]
 pub struct GithubRepoStats {
@@ -11,25 +12,28 @@ pub async fn get_repo_stats(
     octocrab: &Octocrab,
     repo_url: &str,
 ) -> Result<Option<GithubRepoStats>, Box<dyn std::error::Error + Send + Sync>> {
-    // Basic heuristic to parse GitHub owner and repo from URLs
-    // Example: "https://github.com/dtolnay/serde" -> owner: "dtolnay", repo: "serde"
-    if !repo_url.contains("github.com") {
+    // Parse the URL using the `url` crate for robustness
+    let parsed_url = match Url::parse(repo_url) {
+        Ok(url) => url,
+        Err(_) => return Ok(None),
+    };
+
+    if parsed_url.host_str() != Some("github.com") {
         return Ok(None);
     }
 
-    let url = repo_url.trim_end_matches(".git");
-    let parts: Vec<&str> = url.split("github.com/").collect();
-    if parts.len() < 2 {
+    // Extract owner and repo from path (e.g., "/owner/repo")
+    let segments: Vec<_> = parsed_url
+        .path_segments()
+        .map(|s| s.collect::<Vec<_>>())
+        .unwrap_or_default();
+
+    if segments.len() < 2 {
         return Ok(None);
     }
 
-    let path_parts: Vec<&str> = parts[1].split('/').collect();
-    if path_parts.len() < 2 {
-        return Ok(None);
-    }
-
-    let owner = path_parts[0];
-    let repo = path_parts[1];
+    let owner = segments[0];
+    let repo = segments[1].trim_end_matches(".git");
 
     // Attempt to fetch repo
     match octocrab.repos(owner, repo).get().await {

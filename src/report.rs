@@ -1,8 +1,29 @@
+use std::fmt;
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum RiskType {
+    OK,
+    SecurityRisk,
+    MaintenanceRisk,
+    VersionRisk,
+}
+
+impl fmt::Display for RiskType {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            RiskType::OK => write!(f, "OK"),
+            RiskType::SecurityRisk => write!(f, "Security Risk"),
+            RiskType::MaintenanceRisk => write!(f, "Maintenance Risk"),
+            RiskType::VersionRisk => write!(f, "Version Risk"),
+        }
+    }
+}
+
 pub struct CrateReport {
     pub name: String,
     pub repo: Option<String>,
     pub issues: Vec<String>,
-    pub risk_type: String,
+    pub risk_type: RiskType,
     pub score: i32,
     highest_severity: i32, // Used internally to track the worst issue and its true risk_type
 }
@@ -13,13 +34,13 @@ impl CrateReport {
             name,
             repo,
             issues: Vec::new(),
-            risk_type: "OK".to_string(),
+            risk_type: RiskType::OK,
             score: 100, // Every crate starts with 100 points
             highest_severity: 0,
         }
     }
 
-    pub fn add_issue(&mut self, issue: String, new_risk: &str, penalty: i32, severity: i32) {
+    pub fn add_issue(&mut self, issue: String, new_risk: RiskType, penalty: i32, severity: i32) {
         self.issues.push(issue);
 
         // Deduct points, but don't let a crate go below 0
@@ -28,7 +49,7 @@ impl CrateReport {
         // Only update the primary risk_type if this issue is more severe than previous ones
         if severity > self.highest_severity {
             self.highest_severity = severity;
-            self.risk_type = new_risk.to_string();
+            self.risk_type = new_risk;
         }
     }
 

@@ -15,16 +15,22 @@ struct Cli {
 
 #[derive(Subcommand, Debug)]
 enum Commands {
+    /// Support for `cargo diagnose` alias
+    #[command(name = "diagnose", hide = true)]
+    Diagnose(AnalyzeArgs),
     /// Runs a full dependency audit
-    Analyze {
-        /// Output result as JSON
-        #[arg(long)]
-        json: bool,
+    Analyze(AnalyzeArgs),
+}
 
-        /// Fail if health score is below threshold
-        #[arg(long)]
-        fail_under: Option<u8>,
-    },
+#[derive(clap::Args, Debug, Clone)]
+struct AnalyzeArgs {
+    /// Output result as JSON
+    #[arg(long)]
+    json: bool,
+
+    /// Fail if health score is below threshold
+    #[arg(long)]
+    fail_under: Option<u8>,
 }
 
 #[tokio::main]
@@ -36,7 +42,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let cli = Cli::parse();
 
     match cli.command {
-        Commands::Analyze { json, fail_under } => {
+        Commands::Analyze(args) | Commands::Diagnose(args) => {
+            let json = args.json;
+            let fail_under = args.fail_under;
             if !json {
                 println!("Scanning project...");
             }
@@ -80,7 +88,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                         for v in vulns {
                             report.add_issue(
                                 format!("Security - {}", v.id),
-                                "Security Risk",
+                                report::RiskType::SecurityRisk,
                                 100,
                                 100,
                             );
@@ -96,7 +104,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                                     "Outdated version (current: {}, latest: {})",
                                     dep.version, crates_res.crate_data.max_version
                                 ),
-                                "Version Risk",
+                                report::RiskType::VersionRisk,
                                 0,
                                 10,
                             );
@@ -116,14 +124,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                                 if stats.is_archived {
                                     report.add_issue(
                                         "Repository is Archived".to_string(),
-                                        "Maintenance Risk",
+                                        report::RiskType::MaintenanceRisk,
                                         100,
                                         50,
                                     );
                                 } else if stats.stars == 0 && stats.open_issues > 100 {
                                     report.add_issue(
                                         "High open issues vs stars".to_string(),
-                                        "Maintenance Risk",
+                                        report::RiskType::MaintenanceRisk,
                                         20,
                                         30,
                                     );
