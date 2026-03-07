@@ -6,14 +6,12 @@
 - **GitHub API** (Repository Maintenance Health and Archived state)
 
 ## Installation
-Currently you can install it directly from the local source:
+
+You can install it directly from crates.io using Cargo:
 
 ```bash
-cargo install --path .
+cargo install cargo-diagnose
 ```
-
-*Note: It will be available directly on crates.io soon as `cargo-diagnose`!*
-
 ## Usage
 Simply navigate to any Rust project directory (with a valid `Cargo.toml`) and run:
 
