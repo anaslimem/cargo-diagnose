@@ -37,21 +37,3 @@ pub fn parse_dependencies(metadata: &cargo_metadata::Metadata) -> Vec<Dependency
 
     dependencies
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_parse_dependencies() {
-        // Use real cargo metadata from the current workspace instead of handcrafted JSON
-        let metadata = MetadataCommand::new()
-            .exec()
-            .expect("failed to run `cargo metadata` for test");
-
-        let deps = parse_dependencies(&metadata);
-
-        // Basic sanity check: function runs and returns a collection (may be empty).
-        assert!(deps.len() >= 0);
-    }
-}

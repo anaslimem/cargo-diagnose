@@ -1,8 +1,6 @@
 use clap::{Parser, Subcommand};
 
-mod api;
-mod metadata;
-mod report;
+use cargo_diagnose::{api, metadata, report};
 
 #[derive(Parser, Debug)]
 #[command(name = "cargo-diagnose")]

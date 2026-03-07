@@ -12,28 +12,10 @@ pub async fn get_repo_stats(
     octocrab: &Octocrab,
     repo_url: &str,
 ) -> Result<Option<GithubRepoStats>, Box<dyn std::error::Error + Send + Sync>> {
-    // Parse the URL using the `url` crate for robustness
-    let parsed_url = match Url::parse(repo_url) {
-        Ok(url) => url,
-        Err(_) => return Ok(None),
+    let (owner, repo) = match parse_github_url(repo_url) {
+        Some(res) => res,
+        None => return Ok(None),
     };
-
-    if parsed_url.host_str() != Some("github.com") {
-        return Ok(None);
-    }
-
-    // Extract owner and repo from path (e.g., "/owner/repo")
-    let segments: Vec<_> = parsed_url
-        .path_segments()
-        .map(|s| s.collect::<Vec<_>>())
-        .unwrap_or_default();
-
-    if segments.len() < 2 {
-        return Ok(None);
-    }
-
-    let owner = segments[0].to_string();
-    let repo = segments[1].trim_end_matches(".git").to_string();
 
     // Attempt to fetch repo info with retries
     crate::api::retry(
@@ -54,4 +36,27 @@ pub async fn get_repo_stats(
         3,
     )
     .await
+}
+
+pub fn parse_github_url(url: &str) -> Option<(String, String)> {
+    let parsed_url = Url::parse(url).ok()?;
+
+    if parsed_url.host_str() != Some("github.com") {
+        return None;
+    }
+
+    let segments: Vec<_> = parsed_url.path_segments()?.collect();
+
+    if segments.len() < 2 {
+        return None;
+    }
+
+    let owner = segments[0].to_string();
+    let repo = segments[1].trim_end_matches(".git").to_string();
+
+    if owner.is_empty() || repo.is_empty() {
+        return None;
+    }
+
+    Some((owner, repo))
 }
