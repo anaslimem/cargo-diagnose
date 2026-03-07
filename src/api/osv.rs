@@ -13,7 +13,7 @@ struct OsvPackage {
     ecosystem: String,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Deserialize)]
 pub struct OsvResponse {
     pub vulns: Option<Vec<OsvVulnerability>>,
 }

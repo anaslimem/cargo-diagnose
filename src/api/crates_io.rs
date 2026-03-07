@@ -1,7 +1,7 @@
 use reqwest::Client;
 use serde::Deserialize;
 
-#[derive(Debug, Deserialize)]
+#[derive(Deserialize)]
 pub struct CratesIoResponse {
     pub crate_data: CrateData,
 }
