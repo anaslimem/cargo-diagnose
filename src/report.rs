@@ -21,6 +21,16 @@ impl CrateReport {
     }
     
     pub fn is_healthy(&self) -> bool {
-        self.issues.is_empty()
+        // A crate is only considered problematic if it has:
+        // - A security risk
+        // - A maintenance risk (e.g. archived)
+        // - More than 10 total issues (if we tracked individual GitHub issues)
+        // A simple version bump shouldn't immediately mark the crate as "Problematic".
+        
+        if self.risk_type == "Security Risk" || self.risk_type == "Maintenance Risk" || self.issues.len() > 10 {
+            return false;
+        }
+
+        true
     }
 }
