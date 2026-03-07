@@ -88,7 +88,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     }
 
                     // 2. Query Crates.io for latest version / metadata
-                    if let Ok(crates_res) = api::crates_io::get_crate_info(&client, &dep.name).await {
+                    if let Ok(crates_res) = api::crates_io::get_crate_info(&client, &dep.name).await
+                    {
                         if crates_res.crate_data.max_version != dep.version {
                             report.add_issue(
                                 format!(
