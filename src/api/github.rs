@@ -32,19 +32,26 @@ pub async fn get_repo_stats(
         return Ok(None);
     }
 
-    let owner = segments[0];
-    let repo = segments[1].trim_end_matches(".git");
+    let owner = segments[0].to_string();
+    let repo = segments[1].trim_end_matches(".git").to_string();
 
-    // Attempt to fetch repo
-    match octocrab.repos(owner, repo).get().await {
-        Ok(repo_stats) => Ok(Some(GithubRepoStats {
-            stars: repo_stats.stargazers_count.unwrap_or(0),
-            open_issues: repo_stats.open_issues_count.unwrap_or(0),
-            is_archived: repo_stats.archived.unwrap_or(false),
-        })),
-        Err(e) => {
-            // It could be a 404 if the repo was renamed or deleted.
-            Err(Box::new(e))
-        }
-    }
+    // Attempt to fetch repo info with retries
+    crate::api::retry(
+        || {
+            let owner = owner.clone();
+            let repo = repo.clone();
+            async move {
+                match octocrab.repos(owner, repo).get().await {
+                    Ok(repo_stats) => Ok(Some(GithubRepoStats {
+                        stars: repo_stats.stargazers_count.unwrap_or(0),
+                        open_issues: repo_stats.open_issues_count.unwrap_or(0),
+                        is_archived: repo_stats.archived.unwrap_or(false),
+                    })),
+                    Err(e) => Err(Box::new(e) as Box<dyn std::error::Error + Send + Sync>),
+                }
+            }
+        },
+        3,
+    )
+    .await
 }

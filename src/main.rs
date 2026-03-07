@@ -82,62 +82,83 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     let mut report = report::CrateReport::new(dep.name.clone(), None);
 
                     // 1. Query OSV for vulnerabilities
-                    if let Ok(osv_res) =
-                        api::osv::check_vulnerabilities(&client, &dep.name, &dep.version).await
-                        && let Some(vulns) = osv_res.vulns
-                    {
-                        for v in vulns {
-                            report.add_issue(
-                                format!("Security - {}", v.id),
-                                report::RiskType::SecurityRisk,
-                                100,
-                                100,
+                    match api::osv::check_vulnerabilities(&client, &dep.name, &dep.version).await {
+                        Ok(osv_res) => {
+                            if let Some(vulns) = osv_res.vulns {
+                                for v in vulns {
+                                    report.add_issue(
+                                        format!("Security - {}", v.id),
+                                        report::RiskType::SecurityRisk,
+                                        100,
+                                        100,
+                                    );
+                                }
+                            }
+                        }
+                        Err(e) => {
+                            eprintln!(
+                                "Warning: Failed to check vulnerabilities for {}: {}",
+                                dep.name, e
                             );
                         }
                     }
 
                     // 2. Query Crates.io for latest version / metadata
-                    if let Ok(crates_res) = api::crates_io::get_crate_info(&client, &dep.name).await
-                    {
-                        if crates_res.crate_data.max_version != dep.version {
-                            report.add_issue(
-                                format!(
-                                    "Outdated version (current: {}, latest: {})",
-                                    dep.version, crates_res.crate_data.max_version
-                                ),
-                                report::RiskType::VersionRisk,
-                                0,
-                                10,
-                            );
-                        }
+                    match api::crates_io::get_crate_info(&client, &dep.name).await {
+                        Ok(crates_res) => {
+                            if crates_res.crate_data.max_version != dep.version {
+                                report.add_issue(
+                                    format!(
+                                        "Outdated version (current: {}, latest: {})",
+                                        dep.version, crates_res.crate_data.max_version
+                                    ),
+                                    report::RiskType::VersionRisk,
+                                    0,
+                                    10,
+                                );
+                            }
 
-                        if let Some(repo_url) = crates_res.crate_data.repository {
-                            let clean_repo = repo_url
-                                .replace("https://", "")
-                                .replace("http://", "")
-                                .replace("www.", "");
-                            report.repo = Some(clean_repo);
+                            if let Some(repo_url) = crates_res.crate_data.repository {
+                                let clean_repo = repo_url
+                                    .replace("https://", "")
+                                    .replace("http://", "")
+                                    .replace("www.", "");
+                                report.repo = Some(clean_repo);
 
-                            // 3. Query GitHub if it's a github repo
-                            if let Ok(Some(stats)) =
-                                api::github::get_repo_stats(&octocrab, &repo_url).await
-                            {
-                                if stats.is_archived {
-                                    report.add_issue(
-                                        "Repository is Archived".to_string(),
-                                        report::RiskType::MaintenanceRisk,
-                                        100,
-                                        50,
-                                    );
-                                } else if stats.stars == 0 && stats.open_issues > 100 {
-                                    report.add_issue(
-                                        "High open issues vs stars".to_string(),
-                                        report::RiskType::MaintenanceRisk,
-                                        20,
-                                        30,
-                                    );
+                                // 3. Query GitHub if it's a github repo
+                                match api::github::get_repo_stats(&octocrab, &repo_url).await {
+                                    Ok(Some(stats)) => {
+                                        if stats.is_archived {
+                                            report.add_issue(
+                                                "Repository is Archived".to_string(),
+                                                report::RiskType::MaintenanceRisk,
+                                                100,
+                                                50,
+                                            );
+                                        } else if stats.stars == 0 && stats.open_issues > 100 {
+                                            report.add_issue(
+                                                "High open issues vs stars".to_string(),
+                                                report::RiskType::MaintenanceRisk,
+                                                20,
+                                                30,
+                                            );
+                                        }
+                                    }
+                                    Ok(None) => {} // Not a GitHub repo
+                                    Err(e) => {
+                                        eprintln!(
+                                            "Warning: Failed to get GitHub stats for {}: {}",
+                                            dep.name, e
+                                        );
+                                    }
                                 }
                             }
+                        }
+                        Err(e) => {
+                            eprintln!(
+                                "Warning: Failed to get Crates.io info for {}: {}",
+                                dep.name, e
+                            );
                         }
                     }
                     report
