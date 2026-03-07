@@ -1,9 +1,9 @@
 # Cargo Diagnose
 
-`cargo-diagnose` is a robust command-line dependency health analyzer for Rust projects. It parses your `Cargo.toml` and cross-references your direct dependencies against three major threat intelligence sources:
-- **OSV.dev** (Vulnerabilities and Security Advisories)
-- **Crates.io** (Deprecations and Outdated Versions)
-- **GitHub API** (Repository Maintenance Health and Archived state)
+`cargo-diagnose` is a tool that checks the health of your Rust project's dependencies. It looks at your `Cargo.toml` file and checks your dependencies using:
+- **OSV.dev** (for known security problems)
+- **Crates.io** (for deprecated and old versions)
+- **GitHub API** (to see if the repository is maintained or archived)
 
 ## Installation
 
@@ -12,14 +12,16 @@ You can install it directly from crates.io using Cargo:
 ```bash
 cargo install cargo-diagnose
 ```
+
 ## Usage
-Simply navigate to any Rust project directory (with a valid `Cargo.toml`) and run:
+
+Go to any Rust project directory (where your `Cargo.toml` is) and run:
 
 ```bash
 cargo-diagnose analyze
 ```
 
-This will output a clean, human-readable terminal report grading your dependencies out of 100%:
+This will print a report showing a score out of 100% for your dependencies:
 
 ```text
 Dependency Health Check Report
@@ -41,28 +43,32 @@ Missing / Vulnerable Crates: 12%
 Good / Healthy Crates: 88%
 ```
 
-### JSON Mode
-If you want to plug this into a CI/CD pipeline or external dashboard, you can output pure JSON data instead:
+### JSON Output
+
+If you want to use this in scripts or other tools, you can get the output as JSON:
 
 ```bash
 cargo-diagnose analyze --json
 ```
 
-### CI Threshold (Fail Under)
-You can configure `cargo-diagnose` to exit with a non-zero system failure code if the project health dips below a certain percentage. This is incredibly useful for blocking Pull Requests that introduce heavily unmaintained or vulnerable crates:
+### Fail Test (CI)
+
+You can make `cargo-diagnose` fail the command if the score is too low. This is useful for stopping pull requests that add unsafe or unmaintained crates:
 
 ```bash
 cargo-diagnose analyze --fail-under 90
 ```
-If the overall score is less than `90%`, it will fail the build step.
+If the overall score is less than `90%`, the command will fail.
 
 ## How the Scoring Works
-A direct dependency is considered "Healthy" natively unless it meets one of these severe conditions:
-1. **Security Risk:** It has a reported CVE vulnerability on OSV.dev.
-2. **Maintenance Risk:** The repository is officially "Archived" on GitHub, or it has zero stars and an alarming amount of open issues.
-3. **Severe Issue Count:** It has more than 10 individual issues explicitly flagged by `cargo-doctor`.
 
-If an update is available (Version Risk), it will be flagged in the report for your context, but it **will not** negatively alter your health percentage, to avoid unnecessary noise for fast-moving ecosystems.
+A dependency is healthy unless:
+1. **Security Risk:** It has a known security problem on OSV.dev.
+2. **Maintenance Risk:** The repository is archived on GitHub, or it has zero stars and many open issues.
+3. **Many Issues:** It has more than 10 issues found by `cargo-doctor`.
+
+If a newer version is available, it will be shown in the report. It will not lower your score, so you don't get warnings that are not important.
 
 ## License
+
 MIT
