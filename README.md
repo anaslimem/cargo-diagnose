@@ -23,6 +23,47 @@ cargo diagnose
 
 This will automatically scan your project and print a health report.
 
+### Example Output
+
+```text
+Scanning project...
+Analyzing 42 dependencies...
+
+Dependency Health Check Report
+==============================
+
+Overall Health: 92%
+Good Crates: 38/42
+Problematic Crates: 4
+
+Details:
+---------------------------------------------------
+Crate Name   : tokio
+Score        : 100
+Repo         : github.com/tokio-rs/tokio
+Issue        : None
+Risk Type    : OK
+---------------------------------------------------
+Crate Name   : openssl
+Score        : 0
+Repo         : github.com/sfackler/rust-openssl
+Issue        : Security - RUSTSEC-2023-0044
+Risk Type    : Security Risk
+---------------------------------------------------
+Crate Name   : old-crate
+Score        : 0
+Repo         : github.com/example/old-crate
+Issue        : Repository is Archived
+Risk Type    : Maintenance Risk
+---------------------------------------------------
+Crate Name   : hyper
+Score        : 100
+Repo         : github.com/hyperium/hyper
+Issue        : Outdated version (current: 0.14.2, latest: 1.0.0)
+Risk Type    : Version Risk
+---------------------------------------------------
+```
+
 ### Performance
 
 Analysis is fully **concurrent**. Even if your project has hundreds of dependencies, `cargo-diagnose` retrieves data from OSV, Crates.io, and GitHub in parallel using `tokio`, making it significantly faster than sequential scanners.
