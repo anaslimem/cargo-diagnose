@@ -15,7 +15,7 @@ pub struct CrateData {
 pub async fn get_crate_info(
     client: &Client,
     name: &str,
-) -> Result<CratesIoResponse, Box<dyn std::error::Error>> {
+) -> Result<CratesIoResponse, Box<dyn std::error::Error + Send + Sync>> {
     let url = format!("https://crates.io/api/v1/crates/{}", name);
 
     let response = client

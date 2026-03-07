@@ -27,7 +27,7 @@ pub async fn check_vulnerabilities(
     client: &Client,
     name: &str,
     version: &str,
-) -> Result<OsvResponse, Box<dyn std::error::Error>> {
+) -> Result<OsvResponse, Box<dyn std::error::Error + Send + Sync>> {
     let query = OsvQuery {
         version: version.to_string(),
         package: OsvPackage {

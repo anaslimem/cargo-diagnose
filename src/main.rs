@@ -56,66 +56,93 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             let client = reqwest::Client::new();
             let mut reports: Vec<report::CrateReport> = Vec::new();
 
-            for dep in &dependencies {
-                let mut report = report::CrateReport::new(dep.name.clone(), None);
+            // Initialize octocrab once and share it
+            let mut octocrab_builder = octocrab::Octocrab::builder();
+            if let Ok(token) = std::env::var("GITHUB_TOKEN") {
+                octocrab_builder = octocrab_builder.personal_token(token);
+            }
+            let octocrab = std::sync::Arc::new(octocrab_builder.build()?);
 
-                // 1. Query OSV for vulnerabilities
-                if let Ok(osv_res) =
-                    api::osv::check_vulnerabilities(&client, &dep.name, &dep.version).await
-                    && let Some(vulns) = osv_res.vulns
-                {
-                    for v in vulns {
-                        // Penalty: 100 points, Severity: 100 (Highest)
-                        report.add_issue(format!("Security - {}", v.id), "Security Risk", 100, 100);
+            let mut join_set = tokio::task::JoinSet::new();
+
+            for dep in dependencies {
+                let client = client.clone();
+                let octocrab = std::sync::Arc::clone(&octocrab);
+
+                join_set.spawn(async move {
+                    let mut report = report::CrateReport::new(dep.name.clone(), None);
+
+                    // 1. Query OSV for vulnerabilities
+                    if let Ok(osv_res) =
+                        api::osv::check_vulnerabilities(&client, &dep.name, &dep.version).await
+                        && let Some(vulns) = osv_res.vulns
+                    {
+                        for v in vulns {
+                            report.add_issue(
+                                format!("Security - {}", v.id),
+                                "Security Risk",
+                                100,
+                                100,
+                            );
+                        }
                     }
-                }
 
-                // 2. Query Crates.io for latest version / metadata
-                if let Ok(crates_res) = api::crates_io::get_crate_info(&client, &dep.name).await {
-                    if crates_res.crate_data.max_version != dep.version {
-                        report.add_issue(
-                            format!(
-                                "Outdated version (current: {}, latest: {})",
-                                dep.version, crates_res.crate_data.max_version
-                            ),
-                            "Version Risk",
-                            0,  // Penalty: 0 (we don't deduct points for being outdated)
-                            10, // Severity: 10 (Lowest)
-                        );
-                    }
+                    // 2. Query Crates.io for latest version / metadata
+                    if let Ok(crates_res) = api::crates_io::get_crate_info(&client, &dep.name).await
+                    {
+                        if crates_res.crate_data.max_version != dep.version {
+                            report.add_issue(
+                                format!(
+                                    "Outdated version (current: {}, latest: {})",
+                                    dep.version, crates_res.crate_data.max_version
+                                ),
+                                "Version Risk",
+                                0,
+                                10,
+                            );
+                        }
 
-                    if let Some(repo_url) = crates_res.crate_data.repository {
-                        // Trim https:// and www. for clean printing
-                        let clean_repo = repo_url
-                            .replace("https://", "")
-                            .replace("http://", "")
-                            .replace("www.", "");
-                        report.repo = Some(clean_repo);
+                        if let Some(repo_url) = crates_res.crate_data.repository {
+                            let clean_repo = repo_url
+                                .replace("https://", "")
+                                .replace("http://", "")
+                                .replace("www.", "");
+                            report.repo = Some(clean_repo);
 
-                        // 3. Query GitHub if it's a github repo
-                        if let Ok(Some(stats)) = api::github::get_repo_stats(&repo_url).await {
-                            if stats.is_archived {
-                                report.add_issue(
-                                    "Repository is Archived".to_string(),
-                                    "Maintenance Risk",
-                                    100, // Penalty: 100 (Immediate fail)
-                                    50,  // Severity: 50
-                                );
-                            } else if stats.stars == 0 && stats.open_issues > 100 {
-                                // Soft heuristic warning
-                                report.add_issue(
-                                    "High open issues vs stars".to_string(),
-                                    "Maintenance Risk",
-                                    20, // Penalty: 20 points
-                                    30, // Severity: 30
-                                );
+                            // 3. Query GitHub if it's a github repo
+                            if let Ok(Some(stats)) =
+                                api::github::get_repo_stats(&octocrab, &repo_url).await
+                            {
+                                if stats.is_archived {
+                                    report.add_issue(
+                                        "Repository is Archived".to_string(),
+                                        "Maintenance Risk",
+                                        100,
+                                        50,
+                                    );
+                                } else if stats.stars == 0 && stats.open_issues > 100 {
+                                    report.add_issue(
+                                        "High open issues vs stars".to_string(),
+                                        "Maintenance Risk",
+                                        20,
+                                        30,
+                                    );
+                                }
                             }
                         }
                     }
-                }
-
-                reports.push(report);
+                    report
+                });
             }
+
+            while let Some(res) = join_set.join_next().await {
+                if let Ok(report) = res {
+                    reports.push(report);
+                }
+            }
+
+            // Optional: Sort reports alphabetically by crate name for consistent output
+            reports.sort_by(|a, b| a.name.cmp(&b.name));
 
             let total = reports.len();
             let healthy: usize = reports.iter().filter(|r| r.is_healthy()).count();
