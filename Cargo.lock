@@ -176,6 +176,7 @@ dependencies = [
  "cargo_metadata",
  "clap",
  "octocrab",
+ "rand 0.9.2",
  "reqwest",
  "rustls",
  "serde",

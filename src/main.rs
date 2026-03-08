@@ -60,7 +60,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 println!("Analyzing {} dependencies...", dependencies.len());
             }
 
-            let client = reqwest::Client::new();
+            let client = reqwest::Client::builder()
+                .timeout(std::time::Duration::from_secs(30))
+                .build()?;
             let mut reports: Vec<report::CrateReport> = Vec::new();
 
             // Initialize octocrab once and share it
@@ -71,12 +73,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             let octocrab = std::sync::Arc::new(octocrab_builder.build()?);
 
             let mut join_set = tokio::task::JoinSet::new();
+            let semaphore = std::sync::Arc::new(tokio::sync::Semaphore::new(10));
 
             for dep in dependencies {
                 let client = client.clone();
                 let octocrab = std::sync::Arc::clone(&octocrab);
+                let semaphore = std::sync::Arc::clone(&semaphore);
 
                 join_set.spawn(async move {
+                    let _permit = semaphore.acquire().await.unwrap();
                     let mut report = report::CrateReport::new(dep.name.clone(), None);
 
                     // 1. Query OSV for vulnerabilities
