@@ -41,8 +41,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let cli = Cli::parse();
 
     match cli.command {
-        Commands::Analyze(AnalyzeArgs { json, fail_under, .. })
-        | Commands::Diagnose(AnalyzeArgs { json, fail_under, .. }) => {
+        Commands::Analyze(AnalyzeArgs {
+            json, fail_under, ..
+        })
+        | Commands::Diagnose(AnalyzeArgs {
+            json, fail_under, ..
+        }) => {
             if !json {
                 println!("Scanning project...");
             }
