@@ -30,6 +30,10 @@ struct AnalyzeArgs {
     /// Fail the command (exit code 1) if the overall health score is below this threshold (0-100)
     #[arg(long)]
     fail_under: Option<u8>,
+
+    /// Point deduction for each vulnerability found (0-100)
+    #[arg(long, default_value_t = 100)]
+    vuln_penalty: u8,
 }
 
 #[tokio::main]
@@ -42,10 +46,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     match cli.command {
         Commands::Analyze(AnalyzeArgs {
-            json, fail_under, ..
+            json, fail_under, vuln_penalty, ..
         })
         | Commands::Diagnose(AnalyzeArgs {
-            json, fail_under, ..
+            json, fail_under, vuln_penalty, ..
         }) => {
             if !json {
                 println!("Scanning project...");
@@ -95,7 +99,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                                     report.add_issue(
                                         format!("Security - {}", v.id),
                                         report::RiskType::SecurityRisk,
-                                        100,
+                                        vuln_penalty as i32,
                                         100,
                                     );
                                 }
